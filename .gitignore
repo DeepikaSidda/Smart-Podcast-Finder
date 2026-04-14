@@ -1,0 +1,29 @@
+# Environment & secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Claude / Kiro
+.claude/
+.kiro/
+.mcp.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Test output
+output.json
+
+# SSH keys
+*.pem
