@@ -35,6 +35,19 @@ Built with **Temporal** for reliability, **AWS Bedrock (Llama 3.3 70B)** for int
 - **YouTube**: Full support with video metadata, tags, chapters, and transcripts
 - **Spotify**: Podcast show search with episode metadata and duration filtering
 
+### 🔍 Episode Deep Dive
+- Click "Episode Deep Dive" on any video card to get a detailed AI analysis
+- Fetches the full video transcript and runs it through Bedrock LLM
+- Generates a comprehensive breakdown including:
+  - **TL;DR** — 3-4 sentence detailed summary of the episode
+  - **Key Topics** — Main subjects discussed
+  - **Key Takeaways** — 5-7 actionable insights from the episode
+  - **Notable Quotes** — Memorable quotes from the transcript
+  - **Episode Timeline** — What's covered at different points in the video
+  - **Tools & Resources** — Specific tools, libraries, and frameworks mentioned
+  - **Who Should Watch** — Ideal audience for the episode
+- Falls back to video metadata analysis if transcript is unavailable
+
 ### ⚡ Parallel Processing Pipeline
 The pipeline runs in 4 stages, with stages 2a/2b and 3a/3b running in parallel for speed:
 
@@ -142,6 +155,9 @@ Navigate to `http://localhost:8000` in your browser.
 | POST | `/api/analyze` | Start a new analysis workflow |
 | GET | `/api/status/{id}` | Poll workflow progress |
 | GET | `/api/result/{id}` | Fetch completed results |
+| POST | `/api/deep-dive` | Start an episode deep dive analysis |
+| GET | `/api/deep-dive/status/{id}` | Poll deep dive progress |
+| GET | `/api/deep-dive/result/{id}` | Fetch deep dive results |
 | GET | `/health` | Health check |
 
 ---
