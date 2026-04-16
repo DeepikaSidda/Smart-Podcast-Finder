@@ -147,10 +147,12 @@ class DeepDiveStatus:
 class DeepDiveResult(BaseModel):
     video_title: str
     video_url: str
-    tldr: str = Field(description="2-3 sentence summary")
+    tldr: str = Field(description="3-4 sentence detailed summary")
     key_topics: list[str] = Field(description="Main topics discussed")
     key_takeaways: list[str] = Field(description="5-7 actionable takeaways")
     notable_quotes: list[str] = Field(description="2-3 memorable quotes from the episode")
+    timestamps_summary: list[str] = Field(default_factory=list, description="Timeline of topics covered")
+    tools_and_resources: list[str] = Field(default_factory=list, description="Tools and resources mentioned")
     who_should_watch: str = Field(description="Who would benefit most from this episode")
 
 

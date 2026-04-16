@@ -240,13 +240,17 @@ Analyze this channel."""
 
 DEEP_DIVE_PROMPT = """You are a podcast episode analyst. Given a full transcript of a podcast episode, produce a detailed deep dive analysis.
 
+Be specific and detailed — reference actual content, examples, tools, and concepts mentioned in the episode. Don't be generic.
+
 Return ONLY valid JSON in this exact format, no other text:
 {
-  "tldr": "2-3 sentence summary of the episode",
-  "key_topics": ["topic1", "topic2", "topic3"],
-  "key_takeaways": ["takeaway1", "takeaway2", "takeaway3", "takeaway4", "takeaway5"],
-  "notable_quotes": ["quote1", "quote2"],
-  "who_should_watch": "Description of who would benefit most from this episode"
+  "tldr": "3-4 sentence detailed summary covering the main narrative arc of the episode",
+  "key_topics": ["topic1", "topic2", "topic3", "topic4", "topic5"],
+  "key_takeaways": ["detailed takeaway 1", "detailed takeaway 2", "detailed takeaway 3", "detailed takeaway 4", "detailed takeaway 5", "detailed takeaway 6", "detailed takeaway 7"],
+  "notable_quotes": ["exact quote 1", "exact quote 2", "exact quote 3"],
+  "timestamps_summary": ["0:00 - Introduction and overview", "10:00 - First major topic", "20:00 - Second major topic"],
+  "tools_and_resources": ["tool or resource mentioned 1", "tool or resource mentioned 2"],
+  "who_should_watch": "Detailed description of the ideal viewer and what they will gain"
 }"""
 
 
@@ -317,8 +321,8 @@ async def deep_dive_episode(video_url: str) -> dict:
             "who_should_watch": "N/A",
         }
 
-    # Truncate to ~8000 chars for LLM context
-    truncated = full_text[:8000]
+    # Truncate to ~15000 chars for LLM context — more content = better analysis
+    truncated = full_text[:15000]
 
     prompt = f"""Episode transcript (may be truncated):
 

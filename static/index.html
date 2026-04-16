@@ -217,6 +217,14 @@
             <h4 class="text-xs uppercase tracking-wider text-amber-400 font-semibold mb-1">Notable Quotes</h4>
             <div id="dd-quotes" class="space-y-2"></div>
           </div>
+          <div id="dd-timestamps-section" class="hidden">
+            <h4 class="text-xs uppercase tracking-wider text-cyan-400 font-semibold mb-1">Episode Timeline</h4>
+            <ol id="dd-timestamps" class="space-y-1"></ol>
+          </div>
+          <div id="dd-tools-section" class="hidden">
+            <h4 class="text-xs uppercase tracking-wider text-orange-400 font-semibold mb-1">Tools & Resources Mentioned</h4>
+            <div id="dd-tools" class="flex flex-wrap gap-1.5"></div>
+          </div>
           <div>
             <h4 class="text-xs uppercase tracking-wider text-sky-400 font-semibold mb-1">Who Should Watch</h4>
             <p id="dd-who" class="text-sm text-slate-300 leading-relaxed"></p>
@@ -592,6 +600,22 @@ function renderDeepDive(data) {
   document.getElementById('dd-quotes').innerHTML = (data.notable_quotes || []).map(q =>
     `<blockquote class="text-xs text-slate-400 italic border-l-2 border-amber-500/30 pl-3">"${q}"</blockquote>`
   ).join('');
+  const timestamps = data.timestamps_summary || [];
+  const tsSection = document.getElementById('dd-timestamps-section');
+  if (timestamps.length) {
+    tsSection.classList.remove('hidden');
+    document.getElementById('dd-timestamps').innerHTML = timestamps.map((t, i) =>
+      `<li class="flex gap-2 text-sm"><span class="flex-shrink-0 w-5 h-5 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-bold flex items-center justify-center border border-cyan-500/20">${i+1}</span><span class="text-slate-400 text-xs leading-relaxed">${t}</span></li>`
+    ).join('');
+  } else { tsSection.classList.add('hidden'); }
+  const tools = data.tools_and_resources || [];
+  const toolsSection = document.getElementById('dd-tools-section');
+  if (tools.length) {
+    toolsSection.classList.remove('hidden');
+    document.getElementById('dd-tools').innerHTML = tools.map(t =>
+      `<span class="px-2 py-0.5 text-xs rounded-full bg-orange-500/10 text-orange-300 border border-orange-500/20">${t}</span>`
+    ).join('');
+  } else { toolsSection.classList.add('hidden'); }
   document.getElementById('dd-who').textContent = data.who_should_watch || 'N/A';
 }
 </script>
