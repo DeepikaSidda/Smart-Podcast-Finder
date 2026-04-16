@@ -236,3 +236,60 @@ Analyze this channel."""
         key_insights=data.get("key_insights", []),
         tone=tone,
     )
+
+
+DEEP_DIVE_PROMPT = """You are a podcast episode analyst. Given a full transcript of a podcast episode, produce a detailed deep dive analysis.
+
+Return ONLY valid JSON in this exact format, no other text:
+{
+  "tldr": "2-3 sentence summary of the episode",
+  "key_topics": ["topic1", "topic2", "topic3"],
+  "key_takeaways": ["takeaway1", "takeaway2", "takeaway3", "takeaway4", "takeaway5"],
+  "notable_quotes": ["quote1", "quote2"],
+  "who_should_watch": "Description of who would benefit most from this episode"
+}"""
+
+
+@activity.defn
+async def deep_dive_episode(video_url: str) -> dict:
+    """Generate a detailed AI summary of a single episode using its full transcript."""
+    import re
+    from youtube_transcript_api import YouTubeTranscriptApi
+
+    # Extract video ID
+    m = re.search(r"[?&]v=([^&]+)", video_url)
+    if not m:
+        raise ValueError(f"Invalid YouTube URL: {video_url}")
+    video_id = m.group(1)
+
+    # Fetch full transcript
+    activity.logger.info(f"Fetching full transcript for {video_id}")
+    ytt_api = YouTubeTranscriptApi()
+    try:
+        transcript = ytt_api.fetch(video_id, languages=["en", "en-US", "en-GB", "hi"])
+        full_text = " ".join(snippet.text for snippet in transcript.snippets)
+    except Exception as e:
+        activity.logger.warning(f"No transcript available: {e}")
+        full_text = ""
+
+    if not full_text:
+        return {
+            "tldr": "Transcript not available for this episode.",
+            "key_topics": [],
+            "key_takeaways": [],
+            "notable_quotes": [],
+            "who_should_watch": "N/A",
+        }
+
+    # Truncate to ~8000 chars for LLM context
+    truncated = full_text[:8000]
+
+    prompt = f"""Episode transcript (may be truncated):
+
+{truncated}
+
+Analyze this episode in detail."""
+
+    activity.logger.info(f"Generating deep dive for video {video_id} ({len(full_text)} chars)")
+    response = _call_llm(DEEP_DIVE_PROMPT, prompt)
+    return _extract_json(response)

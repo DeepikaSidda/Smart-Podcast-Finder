@@ -127,3 +127,34 @@ class WorkflowResult(BaseModel):
     provider: str = "youtube"
     transcripts: dict[str, str] = Field(default_factory=dict)  # url -> transcript excerpt
     transcript_count: int = 0
+
+
+# --- Deep Dive models ---
+
+@dataclass
+class DeepDiveInput:
+    video_url: str
+    video_title: str
+    interests: str = ""
+
+
+@dataclass
+class DeepDiveStatus:
+    phase: str
+    detail: str = ""
+
+
+class DeepDiveResult(BaseModel):
+    video_title: str
+    video_url: str
+    tldr: str = Field(description="2-3 sentence summary")
+    key_topics: list[str] = Field(description="Main topics discussed")
+    key_takeaways: list[str] = Field(description="5-7 actionable takeaways")
+    notable_quotes: list[str] = Field(description="2-3 memorable quotes from the episode")
+    who_should_watch: str = Field(description="Who would benefit most from this episode")
+
+
+class DeepDiveRequestAPI(BaseModel):
+    video_url: str = Field(min_length=1)
+    video_title: str = Field(min_length=1)
+    interests: str = Field(default="")

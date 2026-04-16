@@ -187,6 +187,45 @@
     </div>
   </div>
 
+  <!-- Deep Dive Modal -->
+  <div id="deepdive-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div class="bg-neutral-900 border border-violet-500/20 rounded-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 id="dd-title" class="text-lg font-bold text-violet-300">Episode Deep Dive</h3>
+          <button onclick="document.getElementById('deepdive-modal').classList.add('hidden')" class="text-slate-500 hover:text-white text-xl cursor-pointer">&times;</button>
+        </div>
+        <div id="dd-loading" class="text-center py-8">
+          <div class="inline-block w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin"></div>
+          <p class="text-slate-400 text-sm mt-3">Analyzing episode transcript...</p>
+          <p id="dd-status" class="text-slate-600 text-xs mt-1"></p>
+        </div>
+        <div id="dd-content" class="hidden space-y-4">
+          <div>
+            <h4 class="text-xs uppercase tracking-wider text-violet-400 font-semibold mb-1">TL;DR</h4>
+            <p id="dd-tldr" class="text-sm text-slate-300 leading-relaxed"></p>
+          </div>
+          <div>
+            <h4 class="text-xs uppercase tracking-wider text-fuchsia-400 font-semibold mb-1">Key Topics</h4>
+            <div id="dd-topics" class="flex flex-wrap gap-1.5"></div>
+          </div>
+          <div>
+            <h4 class="text-xs uppercase tracking-wider text-emerald-400 font-semibold mb-1">Key Takeaways</h4>
+            <ol id="dd-takeaways" class="space-y-1.5"></ol>
+          </div>
+          <div>
+            <h4 class="text-xs uppercase tracking-wider text-amber-400 font-semibold mb-1">Notable Quotes</h4>
+            <div id="dd-quotes" class="space-y-2"></div>
+          </div>
+          <div>
+            <h4 class="text-xs uppercase tracking-wider text-sky-400 font-semibold mb-1">Who Should Watch</h4>
+            <p id="dd-who" class="text-sm text-slate-300 leading-relaxed"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
   <div class="flex flex-col items-center gap-3 mt-8">
     <p class="text-xs text-slate-600">Smart Podcast Finder — Tech Builder Program Hackathon 2026</p>
@@ -464,6 +503,7 @@ function renderResults(data) {
           ${transcriptBadge}
         </div>
         <p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">${r.why}</p>${transcriptPanel}
+        <button onclick="event.preventDefault(); event.stopPropagation(); startDeepDive('${r.url.replace(/'/g, "\\'")}', '${r.title.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')" class="mt-2 w-full px-2 py-1.5 text-[11px] font-semibold rounded-lg bg-violet-500/10 text-violet-300 border border-violet-500/20 hover:bg-violet-500/20 cursor-pointer transition-colors">🔍 Episode Deep Dive</button>
         <div class="mt-2">
           <div class="flex items-center justify-between text-xs mb-1">
             <span class="text-slate-500">relevance</span>
@@ -492,6 +532,68 @@ function showError(msg) {
 }
 
 function formatViews(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n); }
+
+async function startDeepDive(url, title) {
+  const modal = document.getElementById('deepdive-modal');
+  const loading = document.getElementById('dd-loading');
+  const content = document.getElementById('dd-content');
+  document.getElementById('dd-title').textContent = title;
+  loading.classList.remove('hidden');
+  content.classList.add('hidden');
+  modal.classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/deep-dive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ video_url: url, video_title: title }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { workflow_id } = await res.json();
+    pollDeepDive(workflow_id);
+  } catch (err) {
+    document.getElementById('dd-status').textContent = 'Error: ' + err.message;
+  }
+}
+
+async function pollDeepDive(wfId) {
+  let count = 0;
+  const poll = setInterval(async () => {
+    count++;
+    if (count > 60) { clearInterval(poll); document.getElementById('dd-status').textContent = 'Timed out'; return; }
+    try {
+      const res = await fetch(`/api/deep-dive/status/${wfId}`);
+      const { phase, detail } = await res.json();
+      document.getElementById('dd-status').textContent = detail || phase;
+      if (phase === 'completed') {
+        clearInterval(poll);
+        const rRes = await fetch(`/api/deep-dive/result/${wfId}`);
+        if (!rRes.ok) throw new Error(await rRes.text());
+        const data = await rRes.json();
+        renderDeepDive(data);
+      }
+    } catch (err) {
+      if (count > 5) { clearInterval(poll); document.getElementById('dd-status').textContent = 'Error: ' + err.message; }
+    }
+  }, 2000);
+}
+
+function renderDeepDive(data) {
+  document.getElementById('dd-loading').classList.add('hidden');
+  const content = document.getElementById('dd-content');
+  content.classList.remove('hidden');
+  document.getElementById('dd-tldr').textContent = data.tldr || 'N/A';
+  document.getElementById('dd-topics').innerHTML = (data.key_topics || []).map(t =>
+    `<span class="px-2 py-0.5 text-xs rounded-full bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/20">${t}</span>`
+  ).join('');
+  document.getElementById('dd-takeaways').innerHTML = (data.key_takeaways || []).map((t, i) =>
+    `<li class="flex gap-2 text-sm"><span class="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold flex items-center justify-center border border-emerald-500/20">${i+1}</span><span class="text-slate-400 text-xs leading-relaxed">${t}</span></li>`
+  ).join('');
+  document.getElementById('dd-quotes').innerHTML = (data.notable_quotes || []).map(q =>
+    `<blockquote class="text-xs text-slate-400 italic border-l-2 border-amber-500/30 pl-3">"${q}"</blockquote>`
+  ).join('');
+  document.getElementById('dd-who').textContent = data.who_should_watch || 'N/A';
+}
 </script>
 </body>
 </html>
