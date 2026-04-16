@@ -262,15 +262,51 @@ async def deep_dive_episode(video_url: str) -> dict:
         raise ValueError(f"Invalid YouTube URL: {video_url}")
     video_id = m.group(1)
 
-    # Fetch full transcript
+    # Fetch full transcript — try all available languages
     activity.logger.info(f"Fetching full transcript for {video_id}")
     ytt_api = YouTubeTranscriptApi()
+    full_text = ""
+
     try:
-        transcript = ytt_api.fetch(video_id, languages=["en", "en-US", "en-GB", "hi"])
+        # First try: specific languages
+        transcript = ytt_api.fetch(video_id, languages=["en", "en-US", "en-GB", "hi", "hi-IN"])
         full_text = " ".join(snippet.text for snippet in transcript.snippets)
-    except Exception as e:
-        activity.logger.warning(f"No transcript available: {e}")
-        full_text = ""
+    except Exception:
+        try:
+            # Second try: list all available transcripts and pick the first one
+            transcript_list = ytt_api.list(video_id)
+            available = list(transcript_list)
+            if available:
+                transcript = ytt_api.fetch(video_id, languages=[available[0].language_code])
+                full_text = " ".join(snippet.text for snippet in transcript.snippets)
+                activity.logger.info(f"Used fallback language: {available[0].language_code}")
+        except Exception as e:
+            activity.logger.warning(f"No transcript available: {e}")
+
+    if not full_text:
+        # Final fallback: use video metadata from YouTube API
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(
+                    "https://www.googleapis.com/youtube/v3/videos",
+                    params={
+                        "part": "snippet",
+                        "id": video_id,
+                        "key": settings.youtube_api_key,
+                    },
+                )
+                resp.raise_for_status()
+                items = resp.json().get("items", [])
+                if items:
+                    snippet = items[0].get("snippet", {})
+                    desc = snippet.get("description", "")
+                    title = snippet.get("title", "")
+                    tags = snippet.get("tags", [])
+                    full_text = f"Title: {title}\nDescription: {desc}\nTags: {', '.join(tags[:20])}"
+                    activity.logger.info(f"Using video metadata as fallback ({len(full_text)} chars)")
+        except Exception as e:
+            activity.logger.warning(f"Metadata fallback also failed: {e}")
 
     if not full_text:
         return {
